@@ -1,0 +1,70 @@
+name: Build and Deploy to aws
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  setup-build-publish-deploy:
+    if: github.repository == 'arjun-trail-backend'
+    name: setup, build, publish, and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout repository
+        uses: checkout/@v2
+
+#steup jdk 1.8
+      - name: set up jdk 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+          server-id: github
+          setting-path: ${{github.workspace}}
+   
+#configure AWS credentials
+      - name: Configure aws crdentials
+        uses: aws_actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS.ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS.SECRET_ACCESS_KEY_ID }}
+          aws-region: ap-south-1a
+
+#login to amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+#build, tag &push the image to ecr
+      - name: build,tag and push image to amazon ecr
+        id: build-image
+
+
+      - run:
+          docker build
+          docker push
+          echo ":: set-output-name=image: :$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          env:
+          ECR_REGITRY: ${{ steps.login_ecr.outputs.registry }}
+          ECR_REPOSITORY: arjun
+          IMAGE_TAG: develop
+
+#push the new image id in the amazon ECS task definition
+
+      - name: push the new image ID in the amazon ECS task defination
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task definition@v1
+          with: 
+            task-definition: task-definition.json
+            container-name: arjun container
+            image: ${{ steps.build-image.outputs.image }}
+
+# Deploy  Amazon ECS task definition         
+       
+       - name: Deploy Amazon ECS task definition
+         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+         with:
+            task_definition: ${{steps.task-def.outputs.task-definition }}
+            service: arjun
+            cluster: arjun 
+            wait-for-service-stability: true
