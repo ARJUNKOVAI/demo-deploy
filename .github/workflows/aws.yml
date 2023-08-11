@@ -2,7 +2,7 @@ name: Build and Deploy to aws
 on:
   push:
     branches:
-      - main
+      - develop
 
 jobs:
   setup-build-publish-deploy:
